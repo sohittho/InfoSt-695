@@ -1,7 +1,5 @@
 # InfoSt-695
 
-* Website to test on: http://www.webscantest.com
-
 ## Important info to run script
 * Run with python3
 * Run as sudo
